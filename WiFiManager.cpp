@@ -127,8 +127,23 @@ void WiFiManager::setupConfigPortal() {
   server->on("/wifisave", std::bind(&WiFiManager::handleWifiSave, this));
   server->on("/i", std::bind(&WiFiManager::handleInfo, this));
   server->on("/r", std::bind(&WiFiManager::handleReset, this));
-  //server->on("/generate_204", std::bind(&WiFiManager::handle204, this));  //Android/Chrome OS captive portal check.
-  server->on("/fwlink", std::bind(&WiFiManager::handleRoot, this));  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
+  // server->on("/generate_204", std::bind(&WiFiManager::handle204, this));  //Android/Chrome OS captive portal check.
+  // server->on("/mobile/status.php", std::bind(&WiFiManager::handle204, this));
+  // server->on("/gen_204", std::bind(&WiFiManager::handle204, this));
+  // server->on("/ncsi.txt", std::bind(&WiFiManager::handle204, this));
+  // server->on("/hotspot-detect.html", std::bind(&WiFiManager::handle204, this));
+  // server->on("/hotspotdetect.html", std::bind(&WiFiManager::handle204, this));
+  // server->on("/library/test/success.html", std::bind(&WiFiManager::handle204, this));
+  // server->on("/success.txt", std::bind(&WiFiManager::handle204, this));
+  server->on("/generate_204", std::bind(&WiFiManager::handleRoot, this));  //Android/Chrome OS captive portal check.
+  server->on("/mobile/status.php", std::bind(&WiFiManager::handleRoot, this));
+  server->on("/gen_204", std::bind(&WiFiManager::handleRoot, this));
+  server->on("/ncsi.txt", std::bind(&WiFiManager::handleRoot, this));
+  server->on("/hotspot-detect.html", std::bind(&WiFiManager::handleRoot, this));
+  server->on("/hotspotdetect.html", std::bind(&WiFiManager::handleRoot, this));
+  server->on("/library/test/success.html", std::bind(&WiFiManager::handleRoot, this));
+  server->on("/success.txt", std::bind(&WiFiManager::handleRoot, this));
+  server->on("/kindle-wifi/wifiredirect.html", std::bind(&WiFiManager::handleRoot, this));  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
   server->onNotFound (std::bind(&WiFiManager::handleNotFound, this));
   server->begin(); // Web server start
   DEBUG_WM(F("HTTP server started"));
@@ -142,7 +157,7 @@ boolean WiFiManager::autoConnect() {
 
 boolean WiFiManager::autoConnect(char const *apName, char const *apPassword) {
   DEBUG_WM(F(""));
-  DEBUG_WM(F("AutoConnect"));
+  DEBUG_WM(F("AutoConnect2"));
 
   // read eeprom for ssid and pass
   //String ssid = getSSID();
@@ -174,6 +189,7 @@ boolean WiFiManager::configPortalHasTimeout(){
 }
 
 boolean WiFiManager::startConfigPortal() {
+  DEBUG_WM(F("startConfigPortal()"));
   String ssid = "ESP" + String(ESP_getChipId());
   return startConfigPortal(ssid.c_str(), NULL);
 }
@@ -436,7 +452,22 @@ void WiFiManager::handleWifi(boolean scan) {
   page += FPSTR(HTTP_HEAD_END);
 
   if (scan) {
-    int n = WiFi.scanNetworks();
+    #if defined(ESP8266)
+      int n = WiFi.scanNetworks();
+    #else
+      WiFi.disconnect();
+      delay(100);
+      WiFi.scanNetworks(true, true);
+      int n = 0;
+
+      while(n <= 0)
+      {
+        DEBUG_WM(F("Scanning"));
+        n = WiFi.scanComplete();
+        delay(100);
+      }
+    #endif
+    
     DEBUG_WM(F("Scan done"));
     if (n == 0) {
       DEBUG_WM(F("No networks found"));
